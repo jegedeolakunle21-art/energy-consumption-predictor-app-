@@ -43,5 +43,24 @@ if st.button("Predict"):
         "Day": date.day,
         "Minute": minute,
     }])
+    # Inspect the model's expected input features
+st.subheader("Model Feature Diagnostics")
+
+expected = list(model.feature_names_in_)
+received = list(row.columns)
+
+st.write("Expected model features:", expected)
+st.write("Features received:", received)
+
+missing = [col for col in expected if col not in received]
+extra = [col for col in received if col not in expected]
+
+st.write("Missing features:", missing)
+st.write("Extra features:", extra)
+
+if missing:
+    st.error(f"Missing required features: {missing}")
+else:
     pred = model.predict(row)[0]
+    st.success(f"Predicted energy consumption: {pred:.2f}")
     st.success(f"Predicted energy consumption: {pred:.2f}")
