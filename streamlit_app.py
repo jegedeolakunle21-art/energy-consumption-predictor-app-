@@ -55,51 +55,61 @@ with c2:
     minute = st.slider("Minute", 0, 59, 0)
 
 # Prediction section
+
 if st.button("Predict"):
 
-    # Create input DataFrame FIRST
-    row = pd.DataFrame([{
-        "Hour": hour,
-        "Temperature": temperature,
-        "Humidity": humidity,
-        "Occupancy": occupancy,
-        "Square Footage": sqft,
-        "Holiday Analysis": holiday,
-        "Renewable Energy": renewable,
-        "Net Energy": net_energy,
-        "Temp Occupancy": temperature * occupancy,
-        "Year": date.year,
-        "Month": date.month,
-        "Day": date.day,
-        "Minute": minute,
-        st.subheader("Training Pipeline Inspection")
+    # Create the input DataFrame
+    row = pd.DataFrame([
+        {
+            "Hour": hour,
+            "Temperature": temperature,
+            "Humidity": humidity,
+            "Occupancy": occupancy,
+            "HVAC usage": hvac_usage,
+            "Square Footage": sqft,
+            "Lighting Usage": lighting_usage,
+            "Day of week": date.strftime("%A"),
+            "Holiday": holiday_flag,
+            "Holiday Analysis": holiday,
+            "Renewable Energy": renewable,
+            "Net Energy": net_energy,
+            "Temp Occupancy": temperature * occupancy,
+            "Year": date.year,
+            "Month": date.month,
+            "Day": date.day,
+            "Minute": minute
+        }
+    ])
 
-for step_name, step in model.named_steps.items():
+    # Inspect model features
+    st.subheader("Model Feature Diagnostics")
 
-    st.write("Pipeline step:", step_name)
+    expected = list(model.feature_names_in_)
+    received = list(row.columns)
 
-    if hasattr(step, "transformers_"):
+    missing = [col for col in expected if col not in received]
+    extra = [col for col in received if col not in expected]
 
-        for name, transformer, columns in step.transformers_:
+    st.write("Expected features:", expected)
+    st.write("Received features:", received)
+    st.write("Missing features:", missing)
+    st.write("Extra features:", extra)
 
-            st.write("Transformer:", name)
-            st.write("Columns:", columns)
+    if not missing:
+        try:
+            row = row[expected]
+            prediction = model.predict(row)[0]
 
-            if hasattr(transformer, "categories_"):
-                st.write(
-                    "Categories:",
-                    transformer.categories_
-                )
+            st.success(
+                f"Predicted energy consumption: {prediction:.2f}"
+            )
 
-            if hasattr(transformer, "named_steps"):
+        except Exception as e:
+            st.error(f"Prediction error: {e}")
 
-                for nested_name, nested in transformer.named_steps.items():
+    else:
+        st.error(f"Missing features: {missing}")
 
-                    if hasattr(nested, "categories_"):
-                        st.write(
-                            nested_name,
-                            nested.categories_
-    }])
 
     # Inspect model features AFTER creating row
     st.subheader("Model Feature Diagnostics")
