@@ -32,6 +32,22 @@ with c1:
     holiday = st.selectbox("Holiday", [0, 1])
     renewable = st.number_input("Renewable Energy", value=0.0)
     net_energy = st.number_input("Net Energy", value=0.0)
+    hvac_usage = st.number_input(
+    "HVAC Usage",
+    min_value=0.0,
+    value=0.0
+)
+
+lighting_usage = st.number_input(
+    "Lighting Usage",
+    min_value=0.0,
+    value=0.0
+)
+
+holiday_flag = st.selectbox(
+    "Holiday",
+    [0, 1]
+)
 
 with c2:
     date = st.date_input("Date")
@@ -56,6 +72,34 @@ if st.button("Predict"):
         "Month": date.month,
         "Day": date.day,
         "Minute": minute,
+        st.subheader("Training Pipeline Inspection")
+
+for step_name, step in model.named_steps.items():
+
+    st.write("Pipeline step:", step_name)
+
+    if hasattr(step, "transformers_"):
+
+        for name, transformer, columns in step.transformers_:
+
+            st.write("Transformer:", name)
+            st.write("Columns:", columns)
+
+            if hasattr(transformer, "categories_"):
+                st.write(
+                    "Categories:",
+                    transformer.categories_
+                )
+
+            if hasattr(transformer, "named_steps"):
+
+                for nested_name, nested in transformer.named_steps.items():
+
+                    if hasattr(nested, "categories_"):
+                        st.write(
+                            nested_name,
+                            nested.categories_
+                        )
     }])
 
     # Inspect model features AFTER creating row
