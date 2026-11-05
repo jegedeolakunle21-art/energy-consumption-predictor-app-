@@ -99,7 +99,6 @@ for step_name, step in model.named_steps.items():
                         st.write(
                             nested_name,
                             nested.categories_
-                        )
     }])
 
     # Inspect model features AFTER creating row
