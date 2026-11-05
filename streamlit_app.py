@@ -26,23 +26,7 @@ with c2:
     date = st.date_input("Date")
     hour = st.slider("Hour", 0, 23, 12)
     minute = st.slider("Minute", 0, 59, 0)
-
-if st.button("Predict"):
-    row = pd.DataFrame([{
-        "Hour": hour,
-        "Temperature": temperature,
-        "Humidity": humidity,
-        "Occupancy": occupancy,
-        "Square Footage": sqft,
-        "Holiday Analysis": holiday,
-        "Renewable Energy": renewable,
-        "Net Energy": net_energy,
-        "Temp Occupancy": temperature * occupancy,  # must match your notebook
-        "Year": date.year,
-        "Month": date.month,
-        "Day": date.day,
-        "Minute": minute,
-    }])
+    
     # Inspect the model's expected input features
 st.subheader("Model Feature Diagnostics")
 
