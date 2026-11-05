@@ -4,142 +4,248 @@ import pandas as pd
 import joblib
 from pathlib import Path
 
+# --------------------------------------------------
+# PAGE CONFIGURATION
+# --------------------------------------------------
+
 st.set_page_config(
     page_title="Energy Consumption Predictor",
     page_icon="⚡",
     layout="wide"
 )
 
-# Load existing trained model
+# --------------------------------------------------
+# LOAD EXISTING TRAINED MODEL
+# --------------------------------------------------
+
 @st.cache_resource
 def load_model():
     model_path = Path(__file__).parent / "energy_model.pkl"
+
+    if not model_path.exists():
+        raise FileNotFoundError(
+            f"Model file not found: {model_path}"
+        )
+
     return joblib.load(model_path)
 
-model = load_model()
+
+try:
+    model = load_model()
+except Exception as e:
+    st.error("Unable to load the trained model.")
+    st.exception(e)
+    st.stop()
+
+
+# --------------------------------------------------
+# APPLICATION HEADER
+# --------------------------------------------------
 
 st.title("⚡ Energy Consumption Predictor")
-st.write("Enter the required parameters to predict energy consumption.")
 
-# Input fields
+st.write(
+    "Enter the building and energy parameters "
+    "to predict energy consumption."
+)
+
+st.divider()
+
+
+# --------------------------------------------------
+# USER INPUTS
+# --------------------------------------------------
+
 c1, c2 = st.columns(2)
 
 with c1:
-    temperature = st.number_input("Temperature", value=22.0)
-    humidity = st.number_input("Humidity", value=50.0)
-    occupancy = st.number_input("Occupancy", value=10, step=1)
-    sqft = st.number_input("Square Footage", value=1500.0)
-    holiday = st.selectbox("Holiday", [0, 1])
-    renewable = st.number_input("Renewable Energy", value=0.0)
-    net_energy = st.number_input("Net Energy", value=0.0)
+
+    st.subheader("Building and Energy Parameters")
+
+    temperature = st.number_input(
+        "Temperature",
+        value=22.0
+    )
+
+    humidity = st.number_input(
+        "Humidity",
+        value=50.0
+    )
+
+    occupancy = st.number_input(
+        "Occupancy",
+        min_value=0,
+        value=10,
+        step=1
+    )
+
     hvac_usage = st.number_input(
-    "HVAC Usage",
-    min_value=0.0,
-    value=0.0
-)
+        "HVAC Usage",
+        min_value=0.0,
+        value=0.0
+    )
 
-lighting_usage = st.number_input(
-    "Lighting Usage",
-    min_value=0.0,
-    value=0.0
-)
+    sqft = st.number_input(
+        "Square Footage",
+        min_value=0.0,
+        value=1500.0
+    )
 
-holiday_flag = st.selectbox(
-    "Holiday",
-    [0, 1]
-)
+    lighting_usage = st.number_input(
+        "Lighting Usage",
+        min_value=0.0,
+        value=0.0
+    )
+
+    renewable = st.number_input(
+        "Renewable Energy",
+        min_value=0.0,
+        value=0.0
+    )
+
+    net_energy = st.number_input(
+        "Net Energy",
+        value=0.0
+    )
+
 
 with c2:
+
+    st.subheader("Date and Time Parameters")
+
     date = st.date_input("Date")
-    hour = st.slider("Hour", 0, 23, 12)
-    minute = st.slider("Minute", 0, 59, 0)
 
-# Prediction section
+    hour = st.slider(
+        "Hour",
+        min_value=0,
+        max_value=23,
+        value=12
+    )
 
-if st.button("Predict"):
+    minute = st.slider(
+        "Minute",
+        min_value=0,
+        max_value=59,
+        value=0
+    )
 
-    # Create the input DataFrame
-    row = pd.DataFrame([
-        {
-            "Hour": hour,
-            "Temperature": temperature,
-            "Humidity": humidity,
-            "Occupancy": occupancy,
-            "HVAC usage": hvac_usage,
-            "Square Footage": sqft,
-            "Lighting Usage": lighting_usage,
-            "Day of week": date.strftime("%A"),
-            "Holiday": holiday_flag,
-            "Holiday Analysis": holiday,
-            "Renewable Energy": renewable,
-            "Net Energy": net_energy,
-            "Temp Occupancy": temperature * occupancy,
-            "Year": date.year,
-            "Month": date.month,
-            "Day": date.day,
-            "Minute": minute
-        }
-    ])
+    holiday = st.selectbox(
+        "Holiday",
+        options=[0, 1],
+        format_func=lambda x: "Yes" if x == 1 else "No"
+    )
 
-    # Inspect model features
-    st.subheader("Model Feature Diagnostics")
+    holiday_analysis = st.selectbox(
+        "Holiday Analysis",
+        options=[0, 1],
+        format_func=lambda x: "Yes" if x == 1 else "No"
+    )
 
-    expected = list(model.feature_names_in_)
-    received = list(row.columns)
 
-    missing = [col for col in expected if col not in received]
-    extra = [col for col in received if col not in expected]
+st.divider()
 
-    st.write("Expected features:", expected)
-    st.write("Received features:", received)
-    st.write("Missing features:", missing)
-    st.write("Extra features:", extra)
 
-    if not missing:
-        try:
-            row = row[expected]
-            prediction = model.predict(row)[0]
+# --------------------------------------------------
+# PREDICTION
+# --------------------------------------------------
 
-            st.success(
-                f"Predicted energy consumption: {prediction:.2f}"
+if st.button("Predict Energy Consumption", type="primary"):
+
+    try:
+
+        # Construct all 17 expected input features
+        row = pd.DataFrame([
+            {
+                "Hour": hour,
+                "Temperature": temperature,
+                "Humidity": humidity,
+                "Occupancy": occupancy,
+                "HVAC usage": hvac_usage,
+                "Square Footage": sqft,
+                "Lighting Usage": lighting_usage,
+
+                # Provisional weekday representation:
+                # verify against the original training data
+                "Day of week": date.strftime("%A"),
+
+                "Holiday": holiday,
+                "Holiday Analysis": holiday_analysis,
+                "Renewable Energy": renewable,
+                "Net Energy": net_energy,
+                "Temp Occupancy": temperature * occupancy,
+                "Year": date.year,
+                "Month": date.month,
+                "Day": date.day,
+                "Minute": minute
+            }
+        ])
+
+        # --------------------------------------------------
+        # FEATURE VALIDATION
+        # --------------------------------------------------
+
+        expected = list(model.feature_names_in_)
+        received = list(row.columns)
+
+        missing = [
+            col for col in expected
+            if col not in received
+        ]
+
+        extra = [
+            col for col in received
+            if col not in expected
+        ]
+
+        with st.expander("Model Feature Diagnostics"):
+
+            st.write("Expected features:", expected)
+            st.write("Received features:", received)
+            st.write("Missing features:", missing)
+            st.write("Extra features:", extra)
+
+        if missing:
+
+            st.error(
+                f"Required model features are missing: {missing}"
             )
 
-        except Exception as e:
-            st.error(f"Prediction error: {e}")
+            st.stop()
 
-    else:
-        st.error(f"Missing features: {missing}")
+        if extra:
 
-
-    # Inspect model features AFTER creating row
-    st.subheader("Model Feature Diagnostics")
-
-    expected = list(model.feature_names_in_)
-    received = list(row.columns)
-
-    missing = [col for col in expected if col not in received]
-    extra = [col for col in received if col not in expected]
-
-    st.write("Expected model features:", expected)
-    st.write("Features received:", received)
-    st.write("Missing features:", missing)
-    st.write("Extra features:", extra)
-
-    # Predict only if all required features are present
-    if not missing:
-        try:
-            row = row[expected]
-            prediction = model.predict(row)[0]
-
-            st.success(
-                f"Predicted energy consumption: {prediction:.2f}"
+            st.error(
+                f"Unexpected input features detected: {extra}"
             )
 
-        except Exception as e:
-            st.error(f"Prediction error: {e}")
+            st.stop()
 
-    else:
-        st.error(
-            "Some required model features are missing. "
-            "Send the diagnostic results for correction."
+        # Match the exact feature order used by the model
+        row = row[expected]
+
+        # --------------------------------------------------
+        # MODEL PREDICTION
+        # --------------------------------------------------
+
+        prediction = model.predict(row)[0]
+
+        st.success(
+            f"Predicted Energy Consumption: {prediction:.2f}"
         )
+
+        st.caption(
+            "Prediction generated using your existing trained model."
+        )
+
+        # Display input summary
+        with st.expander("View Prediction Input"):
+
+            st.dataframe(
+                row,
+                use_container_width=True
+            )
+
+    except Exception as e:
+
+        st.error("An error occurred during prediction.")
+        st.exception(e)
